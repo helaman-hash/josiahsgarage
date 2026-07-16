@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#8bbdd1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Garage Door">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="description" content="A calm, playful garage door sensory app.">
+  <title>My Garage Door</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="images/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app" aria-label="Interactive garage door">
+    <section class="scene" aria-live="polite" aria-label="Garage door is closed">
+      <img class="background" src="images/background.png" alt="A sunny storybook garage in a garden" draggable="false">
+
+      <div class="garage-opening" aria-hidden="true">
+        <img class="interior" src="images/garage-interior.png" alt="" draggable="false">
+        <img class="car" id="garageVehicle" src="images/car.png" alt="" draggable="false">
+        <img class="door" id="garageDoor" src="images/garage-door.png" alt="" draggable="false">
+      </div>
+
+      <div class="control control-open">
+        <div class="arrow-sign" id="upSign" aria-hidden="true"><span>↑</span></div>
+        <button class="action-button open-button" id="openButton" type="button" aria-label="Open the garage door">
+          <span>OPEN</span>
+        </button>
+      </div>
+
+      <div class="control control-close">
+        <div class="arrow-sign" id="downSign" aria-hidden="true"><span>↓</span></div>
+        <button class="action-button close-button" id="closeButton" type="button" aria-label="Close the garage door" disabled>
+          <span>CLOSE</span>
+        </button>
+      </div>
+
+      <button class="settings-hotspot" id="settingsHotspot" type="button" aria-label="Hold for parent settings"></button>
+    </section>
+  </main>
+
+  <div class="settings" id="settingsDialog" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" hidden>
+    <div class="settings-card">
+      <h1 id="settingsTitle">Parent Settings</h1>
+      <p class="settings-help">Choose the experience that feels best.</p>
+
+      <label class="range-label" for="travelTime">
+        <span>Door travel time</span>
+        <output id="travelTimeValue" for="travelTime">10 seconds</output>
+      </label>
+      <input id="travelTime" type="range" min="3" max="25" step="1" value="10">
+
+      <label class="toggle-row" for="soundToggle">
+        <span>Sounds</span>
+        <span class="switch"><input id="soundToggle" type="checkbox" checked><span class="switch-track"></span></span>
+      </label>
+
+      <label class="toggle-row" for="vibrationToggle">
+        <span>Vibration</span>
+        <span class="switch"><input id="vibrationToggle" type="checkbox" checked><span class="switch-track"></span></span>
+      </label>
+
+      <label class="toggle-row" for="shuffleToggle">
+        <span>Shuffle vehicles</span>
+        <span class="switch"><input id="shuffleToggle" type="checkbox" checked><span class="switch-track"></span></span>
+      </label>
+
+      <button class="done-button" id="settingsDone" type="button">Done</button>
+    </div>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
