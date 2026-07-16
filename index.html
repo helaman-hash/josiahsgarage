@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Garage Door</title>
+    
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIkdhcmFnZSBEb29yIiwKICAic2hvcnRfbmFtZSI6ICJHYXJhZ2UiLAogICJzdGFydF91cmwiOiAiLiIsCiAgImRpc3BsYXkiOiAic3RhbmRhbG9uZSIsCiAgImJhY2tncm91bmRfY29sb3IiOiAiI0YwRjBGMCIsCiAgInRoZW1lX2NvbG9yIjogIiM0QUYwQTAiLAogICJpY29ucyI6IFsKICAgIHsKICAgICAgInNyYyI6ICJkYXRhOmltYWdlL3N2Zyt4bWwsPHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHZpZXdCb3g9JzAgMCAxMDAgMTAwJz48cmVjdCB3aWR0aD0nMTAwJyBoZWlnaHQ9JzEwMCcgZmlsbD0nIzRDQUY1MCcvPjxwYXRoIGQ9J00yMCA4MCBMMjAgNDAgTDUwIDIwTDgwIDQwTDgwIDgwIFonIGZpbGw9JyNmZmYnLz48cmVjdCB4PSczMCcgeT0nNDUnIHdpZHRoPSc0MCcgaGVpZHRoPSczNScgZmlsbD0nIzMzMycvPjwvc3ZnPiIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2Uvc3ZnK3htbCIKICAgIH0KICBdCn0=">
+
+    <style>
+        :root {
+            --door-duration: 10s;
+        }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #eaeaea;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* INVISIBLE SETTINGS GATE: Completely blank 80x80px area in top right */
+        .secret-settings-trigger {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 80px;
+            background: transparent;
+            z-index: 1000;
+            cursor: default;
+        }
+
+        /* The Garage Frame */
+        .garage-container {
+            position: relative;
+            width: 90vw;
+            max-width: 500px;
+            height: 55vh;
+            margin-top: 30px;
+            background: #444; /* Inside wall */
+            border: 12px solid #888;
+            border-bottom: none;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        /* Inside reward car */
+        .garage-interior {
+            position: absolute;
+            bottom: 10px;
+            width: 80%;
+            height: auto;
+            text-align: center;
+        }
+        .garage-interior svg {
+            width: 100%;
+            max-height: 150px;
+        }
+
+        /* The Moving Garage Door */
+        .garage-door {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #d0d0d0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: transform var(--door-duration) linear;
+            transform: translateY(0%);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        /* Door slats */
+        .slat {
+            flex-grow: 1;
+            border-bottom: 3px solid #777;
+            border-top: 2px solid #fff;
+            background: linear-gradient(to bottom, #e0e0e0, #b0b0b0);
+            position: relative;
+        }
+        .slat::after {
+            content: '';
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            top: 45%;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        /* Bottom handle */
+        .slat:last-child::before {
+            content: '';
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+        }
+
+        .garage-door.open {
+            transform: translateY(-92%);
+        }
+
+        /* Giant Control Button */
+        .control-btn {
+            width: 80vw;
+            max-width: 400px;
+            height: 15vh;
+            margin-bottom: 40px;
+            border: none;
+            border-radius: 25px;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            transition: transform 0.1s, background-color 0.3s;
+            text-transform: uppercase;
+        }
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        .btn-open { background-color: #2e7d32; }
+        .btn-close { background-color: #c62828; }
+
+        /* Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .modal-content h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #333;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        /* Settings layout components */
+        .setting-group {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .setting-label {
+            font-weight: bold;
+            color: #444;
+        }
+        
+        /* Styled Switches */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: #2e7d32; }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* Range sliders */
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            accent-color: #2e7d32;
+        }
+        
+        .save-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            border-radius: 10px;
+            border: none;
+            background: #2e7d32;
+            color: white;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="secret-settings-trigger" id="secretTrigger"></div>
+
+    <div class="garage-container">
+        <div class="garage-interior">
+            <svg viewBox="0 0 100 60">
+                <g fill="#FFD54F">
+                    <path d="M15 35 C15 25, 30 20, 50 20 C70 20, 85 25, 85 35 L88 45 C88 48, 80 48, 80 48 L20 48 C20 48, 12 48, 12 45 Z" />
+                    <rect x="25" y="45" width="12" height="10" rx="3" fill="#333"/>
+                    <rect x="63" y="45" width="12" height="10" rx="3" fill="#333"/>
+                    <circle cx="25" cy="35" r="5" fill="#FFF"/>
+                    <circle cx="25" cy="35" r="2" fill="#333"/>
+                    <circle cx="75" cy="35" r="5" fill="#FFF"/>
+                    <circle cx="75" cy="35" r="2" fill="#333"/>
+                    <path d="M40 42 Q50 46 60 42" stroke="#333" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </g>
+            </svg>
+        </div>
+
+        <div class="garage-door" id="door">
+            <div class="slat"></div><div class="slat"></div><div class="slat"></div><div class="slat"></div>
+            <div class="slat"></div><div class="slat"></div><div class="slat"></div><div class="slat"></div>
+        </div>
+    </div>
+
+    <button class="control-btn btn-open" id="actionBtn">Open</button>
+
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h3>Parent Settings</h3>
+            
+            <div class="setting-group" style="border-bottom: 2px solid #eee; padding-bottom: 15px;">
+                <div class="setting-row">
+                    <span class="setting-label" style="font-size: 1.1rem; color: #111;">Master Sensory Effects</span>
+                    <label class="switch">
+                        <input type="checkbox" id="masterToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-row">
+                    <span class="setting-label">Travel Duration</span>
+                    <span id="speedVal" style="font-weight: bold;">10s</span>
+                </div>
+                <input type="range" id="speedRange" min="3" max="20" value="10">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-row">
+                    <span class="setting-label">Sound Effects</span>
+                    <label class="switch">
+                        <input type="checkbox" id="soundToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>Volume</span>
+                    <span id="volumeVal">80%</span>
+                </div>
+                <input type="range" id="volumeRange" min="0" max="100" value="80">
+            </div>
+
+            <div class="setting-group">
+                <div class="setting-row">
+                    <span class="setting-label">Haptic Vibration</span>
+                    <label class="switch">
+                        <input type="checkbox" id="hapticToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>Vibration Strength</span>
+                    <span id="hapticVal">60%</span>
+                </div>
+                <input type="range" id="hapticRange" min="10" max="100" value="60">
+            </div>
+
+            <button class="save-btn" id="closeSettings">Save & Close</button>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const door = document.getElementById('door');
+        const actionBtn = document.getElementById('actionBtn');
+        const secretTrigger = document.getElementById('secretTrigger');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettings = document.getElementById('closeSettings');
+        
+        // Control Inputs
+        const masterToggle = document.getElementById('masterToggle');
+        const speedRange = document.getElementById('speedRange');
+        const speedVal = document.getElementById('speedVal');
+        const soundToggle = document.getElementById('soundToggle');
+        const volumeRange = document.getElementById('volumeRange');
+        const volumeVal = document.getElementById('volumeVal');
+        const hapticToggle = document.getElementById('hapticToggle');
+        const hapticRange = document.getElementById('hapticRange');
+        const hapticVal = document.getElementById('hapticVal');
+
+        // State variables
+        let isOpen = false;
+        let isMoving = false;
+        let transitionTimeout;
+        let hapticInterval;
+
+        // Config State (Loaded from localStorage if exists, otherwise defaults)
+        const config = {
+            masterSensory: localStorage.getItem('masterSensory') !== 'false',
+            duration: parseInt(localStorage.getItem('duration')) || 10,
+            soundOn: localStorage.getItem('soundOn') !== 'false',
+            volume: parseInt(localStorage.getItem('volume')) || 80,
+            hapticsOn: localStorage.getItem('hapticsOn') !== 'false',
+            hapticIntensity: parseInt(localStorage.getItem('hapticIntensity')) || 60
+        };
+
+        // Initialize UI with saved configuration values
+        function initConfigUI() {
+            masterToggle.checked = config.masterSensory;
+            
+            speedRange.value = config.duration;
+            speedVal.textContent = config.duration + 's';
+            document.documentElement.style.setProperty('--door-duration', `${config.duration}s`);
+            
+            soundToggle.checked = config.soundOn;
+            volumeRange.value = config.volume;
+            volumeVal.textContent = config.volume + '%';
+            
+            hapticToggle.checked = config.hapticsOn;
+            hapticRange.value = config.hapticIntensity;
+            hapticVal.textContent = config.hapticIntensity + '%';
+            
+            toggleSubSettingsDisabledState();
+        }
+
+        // Gray out sub-settings if master sensory toggle is turned off
+        function toggleSubSettingsDisabledState() {
+            const disableAll = !masterToggle.checked;
+            soundToggle.disabled = disableAll;
+            volumeRange.disabled = disableAll || !soundToggle.checked;
+            hapticToggle.disabled = disableAll;
+            hapticRange.disabled = disableAll || !hapticToggle.checked;
+        }
+
+        // --- AUDIO SYNTHESIS (Web Audio API) ---
+        let audioCtx = null;
+        let motorOsc = null;
+        let gainNode = null;
+
+        function startMotorSound() {
+            if (!config.masterSensory || !config.soundOn) return;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                
+                motorOsc = audioCtx.createOscillator();
+                motorOsc.type = 'triangle';
+                motorOsc.frequency.setValueAtTime(55, audioCtx.currentTime); // Realistic low hum
+
+                // Mechanical jitter modulation
+                const modOsc = audioCtx.createOscillator();
+                const modGain = audioCtx.createGain();
+                modOsc.frequency.value = 8;
+                modGain.gain.value = 3;
+                modOsc.connect(modGain);
+                modGain.connect(motorOsc.frequency);
+
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0.01, audioCtx.currentTime);
+                
+                // Scale target gain based on config volume setting (max volume maps to 0.18 gain limit)
+                const targetVolume = (config.volume / 100) * 0.18;
+                gainNode.gain.linearRampToValueAtTime(targetVolume, audioCtx.currentTime + 0.5);
+
+                motorOsc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                modOsc.start();
+                motorOsc.start();
+            } catch (e) {
+                console.log("Audio Init Failed", e);
+            }
+        }
+
+        function stopMotorSound(isClunk = true) {
+            if (gainNode && audioCtx) {
+                const now = audioCtx.currentTime;
+                gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                
+                if (isClunk && config.masterSensory && config.soundOn) {
+                    // Satisfaction-clunk at the physical end of travel
+                    setTimeout(() => {
+                        try {
+                            const thunkOsc = audioCtx.createOscillator();
+                            const thunkGain = audioCtx.createGain();
+                            thunkOsc.type = 'sine';
+                            thunkOsc.frequency.setValueAtTime(80, audioCtx.currentTime);
+                            thunkOsc.frequency.exponentialRampToValueAtTime(25, audioCtx.currentTime + 0.15);
+                            
+                            const thunkVolume = (config.volume / 100) * 0.35;
+                            thunkGain.gain.setValueAtTime(thunkVolume, audioCtx.currentTime);
+                            thunkGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                            thunkOsc.connect(thunkGain);
+                            thunkGain.connect(audioCtx.destination);
+                            thunkOsc.start();
+                            thunkOsc.stop(audioCtx.currentTime + 0.2);
+                        } catch (e) {}
+                    }, 100);
+                }
+
+                setTimeout(() => {
+                    if (motorOsc) { motorOsc.stop(); motorOsc.disconnect(); }
+                }, 250);
+            }
+        }
+
+        // --- PHYSICAL HAPTICS (Vibrator Engine) ---
+        function startHaptics() {
+            if (!config.masterSensory || !config.hapticsOn || !('vibrate' in navigator)) return;
+
+            // Map UI slider (10-100) directly to active pulse length in ms
+            const pulseLength = Math.max(10, Math.min(100, config.hapticIntensity));
+            
+            // Loop continuous rumbles while the door is in motion
+            hapticInterval = setInterval(() => {
+                navigator.vibrate(pulseLength);
+            }, 120); 
+        }
+
+        function stopHaptics(isClunk = true) {
+            clearInterval(hapticInterval);
+            if (!config.masterSensory || !config.hapticsOn || !('vibrate' in navigator)) return;
+            
+            if (isClunk) {
+                // Dual impact vibration profile when the door slams shut/open
+                setTimeout(() => {
+                    navigator.vibrate([150, 50, 100]); 
+                }, 100);
+            } else {
+                navigator.vibrate(0); // Instantly cancel vibration on interrupt stop
+            }
+        }
+
+        // --- BUTTON & MOVEMENT CONTROLS ---
+        function toggleDoor() {
+            if (isMoving) {
+                // Interrupted travel: stop sound, haptics, and door transit immediately
+                stopMotorSound(false);
+                stopHaptics(false);
+                clearTimeout(transitionTimeout);
+                
+                const computedStyle = window.getComputedStyle(door);
+                const matrix = new WebKitCSSMatrix(computedStyle.transform);
+                const currentY = matrix.m41; 
+                
+                door.style.transition = 'none';
+                door.style.transform = `translateY(${currentY}px)`;
+                
+                isMoving = false;
+                actionBtn.textContent = isOpen ? "Close" : "Open";
+                return;
+            }
+
+            // Begin door travel state
+            isMoving = true;
+            startMotorSound();
+            startHaptics();
+
+            const msDuration = config.duration * 1000;
+
+            if (!isOpen) {
+                // Raising Door
+                door.style.transition = '';
+                door.classList.add('open');
+                actionBtn.textContent = "STOP";
+                actionBtn.className = "control-btn btn-close";
+                
+                transitionTimeout = setTimeout(() => {
+                    isOpen = true;
+                    isMoving = false;
+                    stopMotorSound(true);
+                    stopHaptics(true);
+                    actionBtn.textContent = "Close";
+                }, msDuration);
+            } else {
+                // Lowering Door
+                door.style.transition = '';
+                door.classList.remove('open');
+                actionBtn.textContent = "STOP";
+                actionBtn.className = "control-btn btn-open";
+
+                transitionTimeout = setTimeout(() => {
+                    isOpen = false;
+                    isMoving = false;
+                    stopMotorSound(true);
+                    stopHaptics(true);
+                    actionBtn.textContent = "Open";
+                }, msDuration);
+            }
+        }
+
+        actionBtn.addEventListener('click', toggleDoor);
+
+        // --- SECURITY PARENTAL GATE: 5-Second Hold on Empty Top-Right Space ---
+        let touchStartTimer;
+        
+        function handleSecretHoldStart(e) {
+            e.preventDefault();
+            touchStartTimer = setTimeout(() => {
+                settingsModal.style.display = 'flex';
+                if ('vibrate' in navigator) navigator.vibrate([80, 50, 80]); // Haptic verification when unlocked
+            }, 5000); // Strict 5-second continuous press requirement
+        }
+
+        function handleSecretHoldEnd() {
+            clearTimeout(touchStartTimer);
+        }
+
+        secretTrigger.addEventListener('touchstart', handleSecretHoldStart, { passive: false });
+        secretTrigger.addEventListener('touchend', handleSecretHoldEnd);
+        secretTrigger.addEventListener('mousedown', handleSecretHoldStart);
+        secretTrigger.addEventListener('mouseup', handleSecretHoldEnd);
+        secretTrigger.addEventListener('mouseleave', handleSecretHoldEnd);
+
+        // --- SETTINGS UI INPUT HANDLERS ---
+        masterToggle.addEventListener('change', () => {
+            config.masterSensory = masterToggle.checked;
+            toggleSubSettingsDisabledState();
+        });
+
+        speedRange.addEventListener('input', (e) => {
+            config.duration = parseInt(e.target.value);
+            speedVal.textContent = config.duration + 's';
+            document.documentElement.style.setProperty('--door-duration', `${config.duration}s`);
+        });
+
+        soundToggle.addEventListener('change', () => {
+            config.soundOn = soundToggle.checked;
+            toggleSubSettingsDisabledState();
+        });
+
+        volumeRange.addEventListener('input', (e) => {
+            config.volume = parseInt(e.target.value);
+            volumeVal.textContent = config.volume + '%';
+        });
+
+        hapticToggle.addEventListener('change', () => {
+            config.hapticsOn = hapticToggle.checked;
+            toggleSubSettingsDisabledState();
+        });
+
+        hapticRange.addEventListener('input', (e) => {
+            config.hapticIntensity = parseInt(e.target.value);
+            hapticVal.textContent = config.hapticIntensity + '%';
+            // Give a small real-time haptic test pulse as they slide
+            if ('vibrate' in navigator) navigator.vibrate(config.hapticIntensity / 2);
+        });
+
+        // Save Settings configuration & Exit Modal
+        closeSettings.addEventListener('click', () => {
+            localStorage.setItem('masterSensory', config.masterSensory);
+            localStorage.setItem('duration', config.duration);
+            localStorage.setItem('soundOn', config.soundOn);
+            localStorage.setItem('volume', config.volume);
+            localStorage.setItem('hapticsOn', config.hapticsOn);
+            localStorage.setItem('hapticIntensity', config.hapticIntensity);
+            
+            settingsModal.style.display = 'none';
+        });
+
+        // Prevent typical mobile screen gestures (e.g. dragging and double-tap zoom)
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1 || !settingsModal.contains(e.target)) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // Initialize App UI Config state
+        initConfigUI();
+
+        // --- OFFLINE SERVICE WORKER REGISTRATION ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swCode = `
+                    const CACHE_NAME = 'garage-door-cache-v2';
+                    const urlsToCache = [ './', './index.html' ];
+                    self.addEventListener('install', event => {
+                        event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache)));
+                    });
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+                    });
+                `;
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const workerUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(workerUrl).catch(err => console.log('SW failed: ', err));
+            });
+        }
+    </script>
+</body>
+</html>
