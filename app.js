@@ -1,3 +1,7 @@
+
+
+// app.js (Part 1)
+
 (function () {
   "use strict";
 
@@ -34,8 +38,11 @@
     stop: new Audio("sounds/motor-stop.mp3"),
     thunk: new Audio("sounds/thunk.mp3")
   };
+
   audio.loop.loop = true;
-  Object.values(audio).forEach((sound) => { sound.preload = "auto"; });
+  Object.values(audio).forEach((sound) => {
+    sound.preload = "auto";
+  });
 
   let state = "closed";
   let movementTimer = 0;
@@ -44,7 +51,6 @@
   let holdTimer = 0;
   let currentVehicleIndex = 0;
 
-  // Load all choices early so each vehicle is ready before the door reveals it.
   VEHICLES.forEach((source) => {
     const image = new Image();
     image.src = source;
@@ -54,32 +60,60 @@
   applySettings();
   updateControls();
 
-  openButton.addEventListener("click", () => moveDoor("opening"));
-  closeButton.addEventListener("click", () => moveDoor("closing"));
+  // ==========================================================
+  // INSTANT RESPONSE FOR LITTLE FINGERS
+  // ==========================================================
+
+  openButton.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+
+    if (openButton.disabled) return;
+
+    openButton.classList.add("is-pressed");
+    moveDoor("opening");
+  });
+
+  closeButton.addEventListener("pointerdown", (event) => {
+    event.preventDefault();
+
+    if (closeButton.disabled) return;
+
+    closeButton.classList.add("is-pressed");
+    moveDoor("closing");
+  });
 
   [openButton, closeButton].forEach((button) => {
-    button.addEventListener("pointerdown", () => button.classList.add("is-pressed"));
     ["pointerup", "pointercancel", "pointerleave"].forEach((eventName) => {
-      button.addEventListener(eventName, () => button.classList.remove("is-pressed"));
+      button.addEventListener(eventName, () => {
+        button.classList.remove("is-pressed");
+      });
     });
   });
 
   function moveDoor(direction) {
-    if ((direction === "opening" && state !== "closed") ||
-        (direction === "closing" && state !== "open")) return;
+    if (
+      (direction === "opening" && state !== "closed") ||
+      (direction === "closing" && state !== "open")
+    ) {
+      return;
+    }
 
-    if (direction === "opening") chooseVehicle();
+    if (direction === "opening") {
+      chooseVehicle();
+    }
 
     state = direction;
     updateControls();
     startSensory();
 
-    requestAnimationFrame(() => {
-      door.classList.toggle("is-open", direction === "opening");
-    });
+    // START THE DOOR IMMEDIATELY
+    door.classList.toggle("is-open", direction === "opening");
 
     window.clearTimeout(movementTimer);
-    movementTimer = window.setTimeout(finishMovement, settings.travelTime * 1000 + 80);
+    movementTimer = window.setTimeout(
+      finishMovement,
+      settings.travelTime * 1000 + 80
+    );
   }
 
   function chooseVehicle() {
@@ -89,11 +123,12 @@
       return;
     }
 
-    // Pick a different vehicle from the one shown on the previous opening.
     let nextIndex = currentVehicleIndex;
+
     while (nextIndex === currentVehicleIndex) {
       nextIndex = Math.floor(Math.random() * VEHICLES.length);
     }
+
     currentVehicleIndex = nextIndex;
     garageVehicle.src = VEHICLES[currentVehicleIndex];
   }
@@ -106,50 +141,68 @@
 
   function updateControls() {
     const moving = state === "opening" || state === "closing";
+
     openButton.disabled = state !== "closed";
     closeButton.disabled = state !== "open";
 
-    // upSign.classList.toggle("is-moving", state === "opening");
-    // downSign.classList.toggle("is-moving", state === "closing");
-    // upSign.classList.toggle("is-ready", state === "closed");
-    // downSign.classList.toggle("is-ready", state === "open");
+    const words = moving
+      ? state === "opening"
+        ? "opening"
+        : "closing"
+      : state;
 
-    const words = moving ? (state === "opening" ? "opening" : "closing") : state;
-    scene.setAttribute("aria-label", `Garage door is ${words}`);
+    scene.setAttribute(
+      "aria-label",
+      `Garage door is ${words}`
+    );
   }
 
   function play(sound) {
     sound.currentTime = 0;
     const promise = sound.play();
-    if (promise) promise.catch(() => {});
+
+    if (promise) {
+      promise.catch(() => {});
+    }
   }
 
   function startSensory() {
     if (settings.sound) {
       audio.loop.pause();
       audio.loop.playbackRate = state === "opening" ? 1 : 0.96;
+
       play(audio.start);
+
       window.setTimeout(() => {
         if (state !== "opening" && state !== "closing") return;
         play(audio.loop);
       }, 430);
 
       let pitchStep = 0;
+
       window.clearInterval(pitchTimer);
+
       pitchTimer = window.setInterval(() => {
         pitchStep += 1;
+
         const base = state === "opening" ? 1 : 0.96;
-        audio.loop.playbackRate = base + Math.sin(pitchStep / 3) * 0.025;
+
+        audio.loop.playbackRate =
+          base + Math.sin(pitchStep / 3) * 0.025;
       }, 450);
     }
 
     if (settings.vibration && "vibrate" in navigator) {
       navigator.vibrate(90);
+
       window.clearInterval(vibrationTimer);
-      vibrationTimer = window.setInterval(() => navigator.vibrate(90), 125);
+
+      vibrationTimer = window.setInterval(() => {
+        navigator.vibrate(90);
+      }, 125);
     }
   }
-
+  
   function stopSensory(withThunk) {
     window.clearInterval(pitchTimer);
     audio.loop.pause();
